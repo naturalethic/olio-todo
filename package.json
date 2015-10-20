@@ -1,0 +1,9 @@
+{
+  "name": "test-app",
+  "version": "0.0.1",
+  "dependencies": {
+    "olio": "naturalethic/olio#web",
+    "todomvc-app-css": "^2.0.1",
+    "todomvc-common": "^1.0.2"
+  }
+}
