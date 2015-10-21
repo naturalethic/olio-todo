@@ -1,4 +1,52 @@
+/* Olio Todo
+
+A documented example of using Olio FRP to implement the TodoMVC app.
+
+Based on https://github.com/tastejs/todomvc/blob/master/app-spec.md
+
+Olio FRP uses concepts from the cycle.js project (http://cycle.js.org/)
+
+Components are read from *.ls files in the /web folder.  Any exported object from these files
+is used to register a `Web Component`
+
+Each component must provide:
+  `view`: Jade template
+  `intent`: Register event streams and return them as an array
+  `model`: Receives events and generates the model, which will be passed to the template
+Optional members:
+  `style`: A style sheet (in Stylus) that will be scoped to the component
+  `start`: A starting model to initialize the view
+  `ready`: A function to be called after the initial rendering
+
+Olio FRP integrates several technologies:
+  * LiveScript
+    Although one could (and may in the future), provide a platform for general Javascript,
+    the author prefers the functional nature of LiveScript.
+  * Web Components
+    All *.ls files in the /web folder will be registered as components via `webcomponents.js`.
+  * Jade & Mithril (VDOM Only)
+    Olio uses Jade for templating.  Jade templates are compiled into functions and provided
+    to the client.  A components model function will emit the `locals` for the view template.
+    The template is compiled into HTML, then passed through a helper to produce mithril vdom
+    code to construct the mithril tree.  The mithril vdom is then applied to the component.
+  * JQuery
+    Exposed globally as `q`.  Why?  `$` is ugly and hard to type.
+  * Kefir
+    Exposed as `s` and used for all FRP.  Olio adds a special stream creator called
+    `from-child-events` which wraps JQuery's `on` in order to provide a stream that registers
+    child events on the component, rather than on the actual child elements.  This is because
+    the component contents (the children) may be destroyed and re-created as the vdom is applied.
+
+Additionally, Olio provides a JQuery custom event on the window called `route`.  This event will
+emit the current route, which is any location href contents beyond `#/`.
+
+*/
+
+# This object will be registered as a custom web component called `olio-todo`.
 export olio-todo =
+  # The view is compiled into a function.  When `model` emits, the framework will call the view
+  # function with the model as the jade `locals`.  This will ultimately result in a mithril vdom
+  # which is applied to the web component.
   view: '''
     section.todoapp
       header.header
@@ -41,15 +89,22 @@ export olio-todo =
         | Part of&nbsp;
         a(href='http://todomvc.com') TodoMVC
   '''
+  # Custom styles for the component may be defined here.  Stylus is expected.
   style: '''
     .hidden
       display: none
   '''
+  # This function returns the initial state of the model for the jade template.  In this
+  # case, we are checking to see if one exists in local storage, otherwise, give an initialized
+  # model.
   start: ->
     if model = local-storage.get-item \todomvc-olio
       JSON.parse model
     else
       { new-todo: '', items: [], completed: 0 }
+  # This is where one defines all the streams that the model should be paying attention to.
+  # These are returned as an array.  Any transforms should be done here too.  The notion
+  # in this example is that most of these will return a `key: value` or two.
   intent: ->
     [
       s.from-child-events this, \keydown, \.new-todo
@@ -84,6 +139,10 @@ export olio-todo =
       s.from-events (q window), \route
         .map -> route: it
     ]
+  # Here we generate the model for the view.  Every stream above is `merged`, so every event
+  # will invoke this function, and thus a `redraw`.  In this example, the function inspects
+  # the components dom, and then considers the intent it has recieved to determine the appopriate
+  # view model.  Also, we go ahead and persist the model.
   model: (intent) ->
     model =
       editing: intent.editing
