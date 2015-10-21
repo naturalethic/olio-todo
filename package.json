@@ -1,8 +1,10 @@
 {
-  "name": "test-app",
-  "version": "0.0.1",
+  "name": "olio-todo",
+  "version": "1.0.0",
+  "repository": "git://github.com/naturalethic/olio-todo.git",
+  "license": "WTFPL",
   "dependencies": {
-    "olio": "naturalethic/olio#web",
+    "olio": "naturalethic/olio",
     "todomvc-app-css": "^2.0.1",
     "todomvc-common": "^1.0.2"
   }
