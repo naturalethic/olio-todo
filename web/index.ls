@@ -8,10 +8,9 @@ export index =
         title Olio • TodoMVC
       body
         script(src='./index.js')
-        pm-main
+        olio-todo
   '''
   style: '''
     @import url("../node_modules/todomvc-common/base.css");
     @import url("../node_modules/todomvc-app-css/index.css");
   '''
-  module: ->

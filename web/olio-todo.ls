@@ -1,4 +1,4 @@
-export pm-main =
+export olio-todo =
   view: '''
     section.todoapp
       header.header
@@ -10,23 +10,23 @@ export pm-main =
           label(for='toggle-all') Mark all as complete
           ul.todo-list
             each item, index in items
-              li(class='#{item.completed ? "completed" : ""} #{item.hidden ? "hidden" : ""} #{editing == index ? "editing" : ""}' description=(item.description))
+              li(class='#{item.completed ? "completed" : ""} #{item.hidden ? "hidden" : ""} #{editing == index ? "editing" : ""}' title=(item.title))
                 .view
                   input.toggle(type='checkbox' checked=(item.completed))
-                  label=item.description
+                  label=item.title
                   button.destroy
-                input.edit(value=(description))
+                input.edit(value=(title))
         footer.footer
           span.todo-count
             strong #{items.length - completed}
             |  item#{(items.length - completed) != 1 ? 's' : ''} left
           ul.filters
             li
-              a(class='#{!currentRoute() ? "selected" : ""}' href='#/') All
+              a(class='#{!route ? "selected" : ""}' href='#/') All
             li
-              a(class='#{currentRoute() == "active" ? "selected" : ""}' href='#/active') Active
+              a(class='#{route == "active" ? "selected" : ""}' href='#/active') Active
             li
-              a(class='#{currentRoute() == "completed" ? "selected" : ""}' href='#/completed') Completed
+              a(class='#{route == "completed" ? "selected" : ""}' href='#/completed') Completed
           if completed
             button.clear-completed Clear completed
     footer.info
@@ -46,11 +46,10 @@ export pm-main =
       display: none
   '''
   start: ->
-    new-todo: ''
-    items:
-      { description: \Bar, completed: false }
-      { description: \Bam, completed: true }
-    completed: 1
+    if model = local-storage.get-item \todomvc-olio
+      JSON.parse model
+    else
+      { new-todo: '', items: [], completed: 0 }
   intent: ->
     [
       s.from-child-events this, \keydown, \.new-todo
@@ -73,7 +72,7 @@ export pm-main =
         .filter -> it.which == 13
         .map ->
           editing-complete: (q it.current-target.parent-element).index!
-          description: it.target.value
+          title: it.target.value
       s.from-child-events this, \keydown, \.edit
         .filter -> it.which == 27
         .map ->
@@ -81,8 +80,9 @@ export pm-main =
       s.from-child-events this, \input, \.edit
         .map ->
           editing: (q it.current-target.parent-element).index!
-          description: it.target.value
+          title: it.target.value
       s.from-events (q window), \route
+        .map -> route: it
     ]
   model: (intent) ->
     model =
@@ -91,18 +91,19 @@ export pm-main =
       items: ((q this).find('.todo-list li')
       |> filter -> intent.destroy != it
       |> map -> {
-        description: (intent.item-edit == it and intent.item-edit-text) or (q it).attr \description
+        title: (intent.item-edit == it and intent.item-edit-text) or (q it).attr \title
         completed: (q it).has-class(\completed) == (it != intent.toggle)
         edit: it == intent.item-wants-edit
-      }) ++ ((intent.new-todo and { description: intent.new-todo, completed: false }) or [])
+      }) ++ ((intent.new-todo and { title: intent.new-todo, completed: false }) or [])
       |> map -> intent.toggle-all? and it.completed = intent.toggle-all; it
       |> filter -> !(intent.clear-completed and it.completed)
       |> each -> it.hidden = (current-route! == \active and it.completed) or (current-route! == \completed and !it.completed)
     model.completed = (model.items |> filter -> it.completed).length
     if intent.editing?
-      intent.description ?= model.items[intent.editing].description
-      model.description = intent.description
+      intent.title ?= model.items[intent.editing].title
+      model.title = intent.title
     if intent.editing-complete?
-      model.items[intent.editing-complete].description = intent.description if intent.description?
+      model.items[intent.editing-complete].title = intent.title if intent.title?
+    local-storage.set-item \todomvc-olio, JSON.stringify model
+    model.route = intent.route if intent.route?
     model
-  ready: ->
