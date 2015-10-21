@@ -98,10 +98,16 @@ export olio-todo =
   # case, we are checking to see if one exists in local storage, otherwise, give an initialized
   # model.
   start: ->
-    if model = local-storage.get-item \todomvc-olio
-      JSON.parse model
-    else
-      { new-todo: '', items: [], completed: 0 }
+    random = (int) -> if int then Math.random! * 16 .|. 0 else Math.random!
+    uuid = -> 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace /[xy]/g, (c) ->
+      (if c is 'x' then (random 16) else (random 16) .&. 0x3 .|. 0x8).to-string 16
+    @uuid = uuid!
+    faye = require 'faye/browser/faye-browser'
+    @client = new faye.Client \http://olio-todo-naturalethic.c9.io:8080/faye
+    # if model = local-storage.get-item \todomvc-olio
+    #  JSON.parse model
+    # else
+    { new-todo: '', items: [], completed: 0 }
   # This is where one defines all the streams that the model should be paying attention to.
   # These are returned as an array.  Any transforms should be done here too.  The notion
   # in this example is that most of these will return a `key: value` or two.
@@ -138,6 +144,9 @@ export olio-todo =
           title: it.target.value
       s.from-events (q window), \route
         .map -> route: it
+      s.stream (emitter) ~>
+        @client.subscribe \/todo, ->
+          emitter.emit remote: it
     ]
   # Here we generate the model for the view.  Every stream above is `merged`, so every event
   # will invoke this function, and thus a `redraw`.  In this example, the function inspects
@@ -163,6 +172,15 @@ export olio-todo =
       model.title = intent.title
     if intent.editing-complete?
       model.items[intent.editing-complete].title = intent.title if intent.title?
-    local-storage.set-item \todomvc-olio, JSON.stringify model
+    if intent.remote
+      if intent.remote.uuid != @uuid
+        info 'RECEIVED', JSON.stringify intent.remote
+        model <<< intent.remote
+    else
+      unless intent.editing
+        info 'SENDING', JSON.stringify model
+        @client.publish \/todo, model <<< uuid: @uuid
+    #local-storage.set-item \todomvc-olio, JSON.stringify model
     model.route = intent.route if intent.route?
     model
+  ready: ->

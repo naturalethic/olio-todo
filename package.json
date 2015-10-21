@@ -4,7 +4,10 @@
   "repository": "git://github.com/naturalethic/olio-todo.git",
   "license": "WTFPL",
   "dependencies": {
+    "faye": "^1.1.2",
+    "node-static": "^0.7.7",
     "olio": "naturalethic/olio",
+    "rethinkdbdash": "^2.1.10",
     "todomvc-app-css": "^2.0.1",
     "todomvc-common": "^1.0.2"
   }
