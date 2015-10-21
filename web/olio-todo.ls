@@ -18,7 +18,7 @@ Optional members:
   `start`: A starting model to initialize the view
   `ready`: A function to be called after the initial rendering
 
-Olio FRP integrates several technologies:
+Olio FRP integrates several projects:
   * LiveScript
     Although one could (and may in the future), provide a platform for general Javascript,
     the author prefers the functional nature of LiveScript.
