@@ -98,12 +98,7 @@ export olio-todo =
   # case, we are checking to see if one exists in local storage, otherwise, give an initialized
   # model.
   start: ->
-    random = (int) -> if int then Math.random! * 16 .|. 0 else Math.random!
-    uuid = -> 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace /[xy]/g, (c) ->
-      (if c is 'x' then (random 16) else (random 16) .&. 0x3 .|. 0x8).to-string 16
-    @uuid = uuid!
-    faye = require 'faye/browser/faye-browser'
-    @client = new faye.Client \http://olio-todo-naturalethic.c9.io:8080/faye
+    @worker = new Worker 'pubsub.js'
     # if model = local-storage.get-item \todomvc-olio
     #  JSON.parse model
     # else
@@ -126,7 +121,7 @@ export olio-todo =
         .map -> destroy: it.current-target.parent-element.parent-element
       s.from-child-events this, \dblclick, '.view label'
         .map ->
-          info set-timeout -> (q \.edit).focus!select! # Goofy way to do this
+          set-timeout -> (q \.edit).focus!select! # Goofy way to do this
           editing: (q it.current-target.parent-element.parent-element).index!
       s.from-child-events this, \blur, \.edit
       s.from-child-events this, \keydown, \.edit
@@ -145,8 +140,10 @@ export olio-todo =
       s.from-events (q window), \route
         .map -> route: it
       s.stream (emitter) ~>
-        @client.subscribe \/todo, ->
-          emitter.emit remote: it
+        @worker.onmessage = ->
+          emitter.emit remote: it.data
+        # @client.subscribe \/todo, ->
+        #   emitter.emit remote: it
     ]
   # Here we generate the model for the view.  Every stream above is `merged`, so every event
   # will invoke this function, and thus a `redraw`.  In this example, the function inspects
@@ -173,13 +170,11 @@ export olio-todo =
     if intent.editing-complete?
       model.items[intent.editing-complete].title = intent.title if intent.title?
     if intent.remote
-      if intent.remote.uuid != @uuid
-        info 'RECEIVED', JSON.stringify intent.remote
-        model <<< intent.remote
+      model <<< intent.remote
     else
-      unless intent.editing
-        info 'SENDING', JSON.stringify model
-        @client.publish \/todo, model <<< uuid: @uuid
+      unless intent.editing or intent.route
+        info \SENDING
+        @worker.post-message model
     #local-storage.set-item \todomvc-olio, JSON.stringify model
     model.route = intent.route if intent.route?
     model
